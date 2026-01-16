@@ -5,13 +5,15 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from tqdm import tqdm
 
 from ..evaluation.judge import Judge, JudgmentResult
 from ..evaluation.taxonomy import EscalationLevel
 from ..metrics.afim_score import AFIMCalculator, AFIMResult, TestResult
+from ..multiturn.runner import MultiTurnRunner, MultiTurnConfig
+from ..multiturn.types import MultiTurnBenchmarkResult
 from ..prompts.loader import PromptLoader, TestPrompt
 from ..providers.base import LLMProvider, LLMResponse
 
@@ -315,3 +317,52 @@ class BenchmarkRunner:
         lines.append("=" * 60)
 
         return "\n".join(lines)
+
+
+async def run_benchmark(
+    target_provider: LLMProvider,
+    judge_provider: LLMProvider,
+    multiturn: bool = False,
+    max_turns: int = 7,
+    pilot_mode: bool = False,
+    prompts: Optional[List[TestPrompt]] = None,
+    output_dir: Optional[Path] = None,
+    use_ensemble_judging: bool = False,
+) -> Union[BenchmarkRun, MultiTurnBenchmarkResult]:
+    """Run benchmark in either single-turn or multi-turn mode.
+
+    Args:
+        target_provider: The LLM being evaluated.
+        judge_provider: The LLM for judging.
+        multiturn: If True, run multi-turn evaluation.
+        max_turns: Maximum turns for multi-turn mode.
+        pilot_mode: If True, use reduced prompt set.
+        prompts: Optional explicit list of prompts.
+        output_dir: Output directory for results.
+        use_ensemble_judging: Use ensemble judging (single-turn only).
+
+    Returns:
+        BenchmarkRun for single-turn, MultiTurnBenchmarkResult for multi-turn.
+    """
+    if multiturn:
+        config = MultiTurnConfig(max_turns=max_turns)
+        if output_dir:
+            config.output_dir = output_dir
+
+        runner = MultiTurnRunner(
+            target_provider=target_provider,
+            judge_provider=judge_provider,
+            config=config,
+        )
+        return await runner.run_benchmark(prompts=prompts, pilot_mode=pilot_mode)
+    else:
+        config = BenchmarkConfig(use_ensemble_judging=use_ensemble_judging)
+        if output_dir:
+            config.output_dir = output_dir
+
+        runner = BenchmarkRunner(
+            target_provider=target_provider,
+            judge_provider=judge_provider,
+            config=config,
+        )
+        return await runner.run_benchmark(prompts=prompts, pilot_mode=pilot_mode)

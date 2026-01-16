@@ -1,12 +1,12 @@
 """Google Gemini provider implementation."""
 
 import os
-from typing import Optional
+from typing import List, Optional
 
 from google import genai
 from google.genai import types
 
-from .base import LLMProvider, LLMResponse
+from .base import LLMProvider, LLMResponse, Message
 
 
 class GoogleProvider(LLMProvider):
@@ -68,4 +68,55 @@ class GoogleProvider(LLMProvider):
             output_tokens=output_tokens,
             finish_reason=finish_reason,
             raw_response=None,  # Gemini response isn't easily serializable
+        )
+
+    async def generate_with_history(
+        self,
+        messages: List[Message],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2048,
+    ) -> LLMResponse:
+        """Generate a response using Google's Gemini API with conversation history."""
+        config = types.GenerateContentConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+        )
+
+        if system_prompt:
+            config.system_instruction = system_prompt
+
+        # Convert messages to Gemini's Content format
+        contents = []
+        for msg in messages:
+            # Gemini uses "user" and "model" roles (not "assistant")
+            role = "user" if msg.role == "user" else "model"
+            contents.append(types.Content(role=role, parts=[types.Part(text=msg.content)]))
+
+        response = await self._client.aio.models.generate_content(
+            model=self.model,
+            contents=contents,
+            config=config,
+        )
+
+        # Extract token counts
+        input_tokens = 0
+        output_tokens = 0
+        if response.usage_metadata:
+            input_tokens = response.usage_metadata.prompt_token_count or 0
+            output_tokens = response.usage_metadata.candidates_token_count or 0
+
+        # Extract finish reason
+        finish_reason = None
+        if response.candidates and response.candidates[0].finish_reason:
+            finish_reason = str(response.candidates[0].finish_reason)
+
+        return LLMResponse(
+            content=response.text or "",
+            model=self.model,
+            provider=self.provider_name,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            finish_reason=finish_reason,
+            raw_response=None,
         )
