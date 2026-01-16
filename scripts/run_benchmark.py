@@ -39,15 +39,9 @@ def get_provider(provider_name: str, model: str):
     return providers[provider_name](model=model)
 
 
-def get_default_judge_for_target(target_provider: str) -> tuple[str, str]:
-    """Get recommended judge provider/model for a target (different family)."""
-    # Use different model family for judging to reduce bias
-    judge_map = {
-        "openai": ("anthropic", "claude-sonnet-4-5"),
-        "anthropic": ("openai", "gpt-4o"),
-        "google": ("anthropic", "claude-sonnet-4-5"),
-    }
-    return judge_map.get(target_provider, ("anthropic", "claude-sonnet-4-5"))
+def get_default_judge() -> tuple[str, str]:
+    """Get default judge provider/model (Claude for consistency)."""
+    return ("anthropic", "claude-sonnet-4-5")
 
 
 def print_results(run) -> None:
@@ -150,7 +144,7 @@ async def run_benchmark(args) -> None:
         judge_provider_name = args.judge_provider
         judge_model_name = args.judge_model
     else:
-        judge_provider_name, judge_model_name = get_default_judge_for_target(args.provider)
+        judge_provider_name, judge_model_name = get_default_judge()
 
     console.print(f"[cyan]Judge:[/cyan] {judge_model_name} ({judge_provider_name})")
     judge = get_provider(judge_provider_name, judge_model_name)
