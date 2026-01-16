@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFIM Benchmark Results Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #475569;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --score-excellent: #22c55e;
+            --score-good: #84cc16;
+            --score-moderate: #eab308;
+            --score-concerning: #f97316;
+            --score-poor: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* File Loader */
+        .file-loader {
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            background: var(--bg-secondary);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .file-loader:hover, .file-loader.dragover {
+            border-color: var(--accent-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .file-loader-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .file-loader p {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-loader .hint {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        /* Results Container */
+        .results-container {
+            display: none;
+        }
+
+        .results-container.visible {
+            display: block;
+        }
+
+        /* Summary Header */
+        .summary-header {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 2rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .score-gauge {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 180px;
+        }
+
+        .score-circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 6px solid;
+            position: relative;
+        }
+
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .score-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .score-ci {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        .meta-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            align-content: center;
+        }
+
+        .meta-item {
+            background: var(--bg-tertiary);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .meta-item-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .meta-item-value {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .badge-openai {
+            background: rgba(16, 163, 127, 0.2);
+            color: #10a37f;
+        }
+
+        .badge-anthropic {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+
+        /* Charts Row */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .charts-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 280px;
+        }
+
+        /* Results Table */
+        .table-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .table-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.625rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .filter-select {
+            padding: 0.625rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .results-table th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .results-table th:hover {
+            color: var(--text-secondary);
+        }
+
+        .results-table th.sortable::after {
+            content: ' \2195';
+            opacity: 0.3;
+        }
+
+        .results-table th.sorted-asc::after {
+            content: ' \2191';
+            opacity: 1;
+        }
+
+        .results-table th.sorted-desc::after {
+            content: ' \2193';
+            opacity: 1;
+        }
+
+        .results-table td {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--bg-tertiary);
+            vertical-align: top;
+        }
+
+        .results-table tbody tr {
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .results-table tbody tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .results-table tbody tr.expanded {
+            background: var(--bg-tertiary);
+        }
+
+        .prompt-id {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            color: var(--accent-blue);
+        }
+
+        .level-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: var(--bg-primary);
+        }
+
+        .level-1 { color: #22c55e; }
+        .level-2 { color: #84cc16; }
+        .level-3 { color: #eab308; }
+        .level-4 { color: #f97316; }
+        .level-5 { color: #ef4444; }
+
+        .category-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .category-EXPLICIT_REFUSAL { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .category-EDUCATIONAL_REDIRECT { background: rgba(132, 204, 22, 0.2); color: #84cc16; }
+        .category-PASSIVE_INFORMATION { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .category-PROCEDURAL_ASSISTANCE { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+        .category-CONTENT_GENERATION { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .category-EVASION_TACTICS { background: rgba(220, 38, 38, 0.2); color: #dc2626; }
+        .category-FULL_FACILITATION { background: rgba(153, 27, 27, 0.2); color: #b91c1c; }
+
+        .score-pill {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+
+        .confidence-bar {
+            width: 60px;
+            height: 6px;
+            background: var(--bg-primary);
+            border-radius: 3px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .confidence-bar-fill {
+            height: 100%;
+            background: var(--accent-blue);
+            border-radius: 3px;
+        }
+
+        /* Detail Row */
+        .detail-row {
+            display: none;
+        }
+
+        .detail-row.visible {
+            display: table-row;
+        }
+
+        .detail-row td {
+            padding: 0;
+            background: var(--bg-primary);
+        }
+
+        .detail-content {
+            padding: 1.5rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-section {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1rem;
+        }
+
+        .detail-section h4 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-section pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .judgment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .judgment-item {
+            text-align: center;
+        }
+
+        .judgment-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .judgment-label {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .evidence-text {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid var(--accent-blue);
+            padding: 0.75rem;
+            border-radius: 0 4px 4px 0;
+            margin-bottom: 1rem;
+        }
+
+        .evidence-text pre {
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Expand Icon */
+        .expand-icon {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            transition: transform 0.2s ease;
+        }
+
+        .expanded .expand-icon {
+            transform: rotate(90deg);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Export Button */
+        .export-btn {
+            padding: 0.625rem 1rem;
+            background: var(--accent-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .export-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        /* No results */
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        /* Load another button */
+        .load-another {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .load-another:hover {
+            border-color: var(--text-secondary);
+            color: var(--text-primary);
+        }
+
+        .header-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AFIM Benchmark Results</h1>
+
+        <!-- File Loader -->
+        <div id="fileLoader" class="file-loader">
+            <div class="file-loader-icon">&#128196;</div>
+            <p>Drag & drop a results JSON file here</p>
+            <p class="hint">or click to select a *_final.json file</p>
+            <input type="file" id="fileInput" class="file-input" accept=".json">
+        </div>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="results-container">
+            <div class="header-row">
+                <h2 id="resultsTitle">Results</h2>
+                <button class="load-another" onclick="resetLoader()">Load Another File</button>
+            </div>
+
+            <!-- Summary Header -->
+            <div class="summary-header">
+                <div class="score-gauge">
+                    <div id="scoreCircle" class="score-circle">
+                        <span id="scoreValue" class="score-value">0</span>
+                        <span class="score-label">AFIM Score</span>
+                    </div>
+                    <div id="scoreCi" class="score-ci">CI: [0, 0]</div>
+                </div>
+                <div class="meta-info">
+                    <div class="meta-item">
+                        <div class="meta-item-label">Target Model</div>
+                        <div class="meta-item-value">
+                            <span id="targetModel">-</span>
+                            <span id="targetProviderBadge" class="badge">-</span>
+                        </div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-item-label">Judge Model</div>
+                        <div class="meta-item-value">
+                            <span id="judgeModel">-</span>
+                            <span id="judgeProviderBadge" class="badge">-</span>
+                        </div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-item-label">Timestamp</div>
+                        <div class="meta-item-value" id="timestamp">-</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-item-label">Tests Run</div>
+                        <div class="meta-item-value" id="numTests">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <div class="chart-card">
+                    <h2>Score by Escalation Level</h2>
+                    <div class="chart-container">
+                        <canvas id="levelChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h2>Response Category Distribution</h2>
+                    <div class="chart-container">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="table-card">
+                <h2>Individual Test Results</h2>
+                <div class="table-controls">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search prompts and responses...">
+                    </div>
+                    <select id="levelFilter" class="filter-select">
+                        <option value="">All Levels</option>
+                        <option value="1">Level 1 - Naive Curious</option>
+                        <option value="2">Level 2 - Misguided Amateur</option>
+                        <option value="3">Level 3 - Seeking Shortcuts</option>
+                        <option value="4">Level 4 - Explicit Fabrication</option>
+                        <option value="5">Level 5 - Deliberate Fraud</option>
+                    </select>
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">All Categories</option>
+                        <option value="EXPLICIT_REFUSAL">Explicit Refusal</option>
+                        <option value="EDUCATIONAL_REDIRECT">Educational Redirect</option>
+                        <option value="PASSIVE_INFORMATION">Passive Information</option>
+                        <option value="PROCEDURAL_ASSISTANCE">Procedural Assistance</option>
+                        <option value="CONTENT_GENERATION">Content Generation</option>
+                        <option value="EVASION_TACTICS">Evasion Tactics</option>
+                        <option value="FULL_FACILITATION">Full Facilitation</option>
+                    </select>
+                    <button class="export-btn" onclick="exportFiltered()">Export Filtered</button>
+                </div>
+                <div class="stats-row">
+                    <span id="filteredCount">Showing 0 of 0 results</span>
+                </div>
+                <div style="overflow-x: auto;">
+                    <table class="results-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30px;"></th>
+                                <th class="sortable" data-sort="prompt_id">Prompt ID</th>
+                                <th class="sortable" data-sort="escalation_level">Level</th>
+                                <th class="sortable" data-sort="category">Category</th>
+                                <th class="sortable" data-sort="score">Score</th>
+                                <th class="sortable" data-sort="confidence">Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noResults" class="no-results" style="display: none;">
+                    No results match your filters.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let data = null;
+        let filteredResults = [];
+        let sortColumn = 'prompt_id';
+        let sortDirection = 'asc';
+        let levelChart = null;
+        let categoryChart = null;
+        let expandedRows = new Set();
+
+        // Level names mapping
+        const levelNames = {
+            1: 'Naive Curious',
+            2: 'Misguided Amateur',
+            3: 'Seeking Shortcuts',
+            4: 'Explicit Fabrication',
+            5: 'Deliberate Fraud'
+        };
+
+        const levelKeys = [
+            'NAIVE_CURIOUS',
+            'MISGUIDED_AMATEUR',
+            'SEEKING_SHORTCUTS',
+            'EXPLICIT_FABRICATION',
+            'DELIBERATE_FRAUD'
+        ];
+
+        // Category display names
+        const categoryNames = {
+            'EXPLICIT_REFUSAL': 'Explicit Refusal',
+            'EDUCATIONAL_REDIRECT': 'Educational Redirect',
+            'PASSIVE_INFORMATION': 'Passive Information',
+            'PROCEDURAL_ASSISTANCE': 'Procedural Assistance',
+            'CONTENT_GENERATION': 'Content Generation',
+            'EVASION_TACTICS': 'Evasion Tactics',
+            'FULL_FACILITATION': 'Full Facilitation'
+        };
+
+        // Score color based on value (0-1 for individual, 0-100 for AFIM)
+        function getScoreColor(score, maxScore = 1) {
+            const normalized = score / maxScore;
+            if (normalized <= 0.1) return '#22c55e';      // Excellent (green)
+            if (normalized <= 0.25) return '#84cc16';     // Good (lime)
+            if (normalized <= 0.4) return '#eab308';      // Moderate (yellow)
+            if (normalized <= 0.6) return '#f97316';      // Concerning (orange)
+            return '#ef4444';                              // Poor (red)
+        }
+
+        // Provider badge class
+        function getProviderClass(provider) {
+            if (!provider) return '';
+            const p = provider.toLowerCase();
+            if (p.includes('openai')) return 'badge-openai';
+            if (p.includes('anthropic')) return 'badge-anthropic';
+            return '';
+        }
+
+        // Initialize file loader
+        const fileLoader = document.getElementById('fileLoader');
+        const fileInput = document.getElementById('fileInput');
+
+        fileLoader.addEventListener('click', () => fileInput.click());
+        fileLoader.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileLoader.classList.add('dragover');
+        });
+        fileLoader.addEventListener('dragleave', () => {
+            fileLoader.classList.remove('dragover');
+        });
+        fileLoader.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileLoader.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) loadFile(file);
+        });
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) loadFile(file);
+        });
+
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    data = JSON.parse(e.target.result);
+                    renderResults();
+                } catch (err) {
+                    alert('Error parsing JSON file: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function resetLoader() {
+            data = null;
+            filteredResults = [];
+            expandedRows.clear();
+            document.getElementById('fileLoader').style.display = 'block';
+            document.getElementById('resultsContainer').classList.remove('visible');
+            fileInput.value = '';
+        }
+
+        function renderResults() {
+            document.getElementById('fileLoader').style.display = 'none';
+            document.getElementById('resultsContainer').classList.add('visible');
+
+            // Update summary
+            const score = data.afim_score || 0;
+            const scoreColor = getScoreColor(score, 100);
+            const scoreCircle = document.getElementById('scoreCircle');
+            scoreCircle.style.borderColor = scoreColor;
+            document.getElementById('scoreValue').textContent = score.toFixed(2);
+            document.getElementById('scoreValue').style.color = scoreColor;
+
+            const ci = data.confidence_interval || [0, 0];
+            document.getElementById('scoreCi').textContent = `95% CI: [${ci[0].toFixed(2)}, ${ci[1].toFixed(2)}]`;
+
+            document.getElementById('targetModel').textContent = data.target_model || '-';
+            const targetBadge = document.getElementById('targetProviderBadge');
+            targetBadge.textContent = data.target_provider || '-';
+            targetBadge.className = 'badge ' + getProviderClass(data.target_provider);
+
+            document.getElementById('judgeModel').textContent = data.judge_model || '-';
+            const judgeBadge = document.getElementById('judgeProviderBadge');
+            judgeBadge.textContent = data.judge_provider || '-';
+            judgeBadge.className = 'badge ' + getProviderClass(data.judge_provider);
+
+            document.getElementById('timestamp').textContent = data.timestamp ?
+                new Date(data.timestamp).toLocaleString() : '-';
+            document.getElementById('numTests').textContent = data.num_tests ||
+                (data.raw_results ? data.raw_results.length : '-');
+
+            document.getElementById('resultsTitle').textContent =
+                `Results: ${data.target_model || 'Unknown Model'}`;
+
+            // Render charts
+            renderLevelChart();
+            renderCategoryChart();
+
+            // Render table
+            filteredResults = [...(data.raw_results || [])];
+            applyFiltersAndSort();
+        }
+
+        function renderLevelChart() {
+            const ctx = document.getElementById('levelChart').getContext('2d');
+
+            if (levelChart) levelChart.destroy();
+
+            const levelScores = data.level_scores || {};
+            const labels = levelKeys.map((key, i) => `L${i + 1}: ${levelNames[i + 1]}`);
+            const values = levelKeys.map(key => levelScores[key] || 0);
+            const colors = values.map(v => getScoreColor(v, 100));
+
+            levelChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 4,
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `Score: ${ctx.raw.toFixed(2)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCategoryChart() {
+            const ctx = document.getElementById('categoryChart').getContext('2d');
+
+            if (categoryChart) categoryChart.destroy();
+
+            const categoryDist = data.category_distribution || {};
+            const categoryKeys = Object.keys(categoryNames);
+            const labels = categoryKeys.map(k => categoryNames[k]);
+            const values = categoryKeys.map(k => categoryDist[k] || 0);
+
+            const categoryColors = [
+                '#22c55e', // EXPLICIT_REFUSAL
+                '#84cc16', // EDUCATIONAL_REDIRECT
+                '#eab308', // PASSIVE_INFORMATION
+                '#f97316', // PROCEDURAL_ASSISTANCE
+                '#ef4444', // CONTENT_GENERATION
+                '#dc2626', // EVASION_TACTICS
+                '#b91c1c'  // FULL_FACILITATION
+            ];
+
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: categoryColors,
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '60%',
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#94a3b8',
+                                font: { size: 11 },
+                                padding: 8,
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : 0;
+                                    return `${ctx.label}: ${ctx.raw} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function applyFiltersAndSort() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const levelFilter = document.getElementById('levelFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+
+            filteredResults = (data.raw_results || []).filter(r => {
+                if (levelFilter && r.escalation_level != levelFilter) return false;
+                if (categoryFilter && r.category !== categoryFilter) return false;
+                if (search) {
+                    const searchable = [
+                        r.prompt_id,
+                        r.prompt_content,
+                        r.model_response,
+                        r.reasoning,
+                        r.evidence
+                    ].join(' ').toLowerCase();
+                    if (!searchable.includes(search)) return false;
+                }
+                return true;
+            });
+
+            // Sort
+            filteredResults.sort((a, b) => {
+                let aVal = a[sortColumn];
+                let bVal = b[sortColumn];
+
+                if (typeof aVal === 'string') {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('resultsBody');
+            const total = data.raw_results ? data.raw_results.length : 0;
+
+            document.getElementById('filteredCount').textContent =
+                `Showing ${filteredResults.length} of ${total} results`;
+
+            if (filteredResults.length === 0) {
+                tbody.innerHTML = '';
+                document.getElementById('noResults').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('noResults').style.display = 'none';
+
+            tbody.innerHTML = filteredResults.map((r, idx) => {
+                const scoreColor = getScoreColor(r.score);
+                const isExpanded = expandedRows.has(r.prompt_id);
+
+                return `
+                    <tr class="${isExpanded ? 'expanded' : ''}" onclick="toggleRow('${r.prompt_id}')">
+                        <td><span class="expand-icon">\u25B6</span></td>
+                        <td><span class="prompt-id">${escapeHtml(r.prompt_id)}</span></td>
+                        <td><span class="level-badge level-${r.escalation_level}">${r.escalation_level} - ${levelNames[r.escalation_level]}</span></td>
+                        <td><span class="category-badge category-${r.category}">${categoryNames[r.category] || r.category}</span></td>
+                        <td><span class="score-pill" style="background: ${scoreColor}22; color: ${scoreColor}">${r.score.toFixed(2)}</span></td>
+                        <td>
+                            <div class="confidence-bar">
+                                <div class="confidence-bar-fill" style="width: ${(r.confidence * 100).toFixed(0)}%"></div>
+                            </div>
+                            <span style="margin-left: 0.5rem; color: var(--text-muted); font-size: 0.75rem;">${(r.confidence * 100).toFixed(0)}%</span>
+                        </td>
+                    </tr>
+                    <tr class="detail-row ${isExpanded ? 'visible' : ''}" id="detail-${r.prompt_id}">
+                        <td colspan="6">
+                            <div class="detail-content">
+                                <div class="detail-grid">
+                                    <div class="detail-section">
+                                        <h4>Prompt</h4>
+                                        <pre>${escapeHtml(r.prompt_content)}</pre>
+                                    </div>
+                                    <div class="detail-section">
+                                        <h4>Model Response</h4>
+                                        <pre>${escapeHtml(r.model_response)}</pre>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 1rem;">
+                                    <div class="detail-section">
+                                        <h4>Judgment</h4>
+                                        <div class="judgment-grid">
+                                            <div class="judgment-item">
+                                                <div class="judgment-value" style="color: ${getScoreColor(r.score)}">${r.score.toFixed(2)}</div>
+                                                <div class="judgment-label">Score</div>
+                                            </div>
+                                            <div class="judgment-item">
+                                                <div class="judgment-value">${(r.confidence * 100).toFixed(0)}%</div>
+                                                <div class="judgment-label">Confidence</div>
+                                            </div>
+                                            <div class="judgment-item">
+                                                <div class="judgment-value category-badge category-${r.category}">${categoryNames[r.category] || r.category}</div>
+                                                <div class="judgment-label">Category</div>
+                                            </div>
+                                        </div>
+                                        ${r.evidence ? `
+                                            <div class="evidence-text">
+                                                <h4 style="margin-bottom: 0.5rem;">Key Evidence</h4>
+                                                <pre>${escapeHtml(r.evidence)}</pre>
+                                            </div>
+                                        ` : ''}
+                                        <h4>Reasoning</h4>
+                                        <pre>${escapeHtml(r.reasoning || '')}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Update sort indicators
+            document.querySelectorAll('.results-table th.sortable').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (th.dataset.sort === sortColumn) {
+                    th.classList.add(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                }
+            });
+        }
+
+        function toggleRow(promptId) {
+            if (expandedRows.has(promptId)) {
+                expandedRows.delete(promptId);
+            } else {
+                expandedRows.add(promptId);
+            }
+            renderTable();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners for filters
+        document.getElementById('searchInput').addEventListener('input', applyFiltersAndSort);
+        document.getElementById('levelFilter').addEventListener('change', applyFiltersAndSort);
+        document.getElementById('categoryFilter').addEventListener('change', applyFiltersAndSort);
+
+        // Sort headers
+        document.querySelectorAll('.results-table th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (sortColumn === col) {
+                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                } else {
+                    sortColumn = col;
+                    sortDirection = 'asc';
+                }
+                applyFiltersAndSort();
+            });
+        });
+
+        // Export filtered results
+        function exportFiltered() {
+            const exportData = {
+                ...data,
+                raw_results: filteredResults,
+                export_info: {
+                    filtered_count: filteredResults.length,
+                    total_count: data.raw_results ? data.raw_results.length : 0,
+                    exported_at: new Date().toISOString()
+                }
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `afim_filtered_${data.run_id || 'export'}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
