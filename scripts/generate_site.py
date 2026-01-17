@@ -1,0 +1,551 @@
+#!/usr/bin/env python3
+"""Generate a static results site from benchmark data.
+
+Creates:
+- index.html with results selector
+- manifest.json listing all available results
+
+Usage:
+    python scripts/generate_site.py [--output-dir data/results]
+"""
+
+import argparse
+import json
+from pathlib import Path
+from datetime import datetime
+
+
+def find_result_files(results_dir: Path) -> list[dict]:
+    """Find all *_final.json files and extract metadata."""
+    results = []
+
+    for path in sorted(results_dir.glob("*_final.json"), reverse=True):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+
+            is_multiturn = data.get("mode") == "multiturn" or "trajectories" in data
+
+            results.append({
+                "filename": path.name,
+                "run_id": data.get("run_id", path.stem.replace("_final", "")),
+                "target_model": data.get("target_model", "Unknown"),
+                "target_provider": data.get("target_provider", "unknown"),
+                "judge_model": data.get("judge_model", "Unknown"),
+                "afim_score": data.get("afim_score", 0),
+                "resistance_score": data.get("resistance_score"),
+                "softening_rate": data.get("softening_rate"),
+                "num_tests": data.get("num_tests", 0),
+                "mode": "multiturn" if is_multiturn else "single",
+                "timestamp": data.get("timestamp"),
+            })
+        except Exception as e:
+            print(f"Warning: Could not parse {path}: {e}")
+
+    return results
+
+
+def generate_manifest(results: list[dict], output_path: Path) -> None:
+    """Generate manifest.json listing all results."""
+    manifest = {
+        "generated_at": datetime.now().isoformat(),
+        "results": results,
+    }
+
+    with open(output_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    print(f"Generated: {output_path}")
+
+
+def generate_index_html(output_path: Path) -> None:
+    """Generate index.html with embedded viewer and results selector."""
+
+    html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFIM Benchmark Results</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #475569;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 0.5rem; }
+        h2 { font-size: 1.125rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-secondary); }
+
+        .subtitle { color: var(--text-muted); margin-bottom: 1.5rem; }
+
+        /* Results Selector */
+        .selector-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .selector-row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .selector-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .selector-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .selector-select {
+            padding: 0.625rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            min-width: 200px;
+        }
+
+        .selector-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Results Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+
+        .result-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .result-card.selected {
+            border-color: var(--accent-purple);
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-model {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .result-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .result-meta {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .badge-single { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .badge-multiturn { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+        .badge-openai { background: rgba(16, 163, 127, 0.2); color: #10a37f; }
+        .badge-anthropic { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+        .badge-google { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+
+        .result-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Viewer iframe */
+        .viewer-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .viewer-container.visible {
+            display: block;
+        }
+
+        .viewer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .viewer-title {
+            font-weight: 600;
+        }
+
+        .viewer-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .viewer-close:hover {
+            color: var(--text-primary);
+        }
+
+        #viewerFrame {
+            width: 100%;
+            height: 80vh;
+            border: none;
+            background: var(--bg-primary);
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        /* Score colors */
+        .score-excellent { color: #22c55e; }
+        .score-good { color: #84cc16; }
+        .score-moderate { color: #eab308; }
+        .score-concerning { color: #f97316; }
+        .score-poor { color: #ef4444; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AFIM Benchmark Results</h1>
+        <p class="subtitle">Academic Fraud Inclination Metric - Model Evaluation Results</p>
+
+        <!-- Filters -->
+        <div class="selector-card">
+            <div class="selector-row">
+                <div class="selector-group">
+                    <span class="selector-label">Provider</span>
+                    <select id="providerFilter" class="selector-select">
+                        <option value="">All Providers</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="anthropic">Anthropic</option>
+                        <option value="google">Google</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <span class="selector-label">Mode</span>
+                    <select id="modeFilter" class="selector-select">
+                        <option value="">All Modes</option>
+                        <option value="single">Single-Turn</option>
+                        <option value="multiturn">Multi-Turn</option>
+                    </select>
+                </div>
+                <div class="selector-group">
+                    <span class="selector-label">Sort By</span>
+                    <select id="sortBy" class="selector-select">
+                        <option value="date">Date (Newest)</option>
+                        <option value="score_asc">Score (Best First)</option>
+                        <option value="score_desc">Score (Worst First)</option>
+                        <option value="model">Model Name</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Grid -->
+        <div id="resultsGrid" class="results-grid">
+            <div class="loading">Loading results...</div>
+        </div>
+
+        <!-- Viewer -->
+        <div id="viewerContainer" class="viewer-container">
+            <div class="viewer-header">
+                <span id="viewerTitle" class="viewer-title">Result Details</span>
+                <button class="viewer-close" onclick="closeViewer()">&times;</button>
+            </div>
+            <iframe id="viewerFrame" src="about:blank"></iframe>
+        </div>
+
+        <div class="footer">
+            Generated by AFIM Benchmark
+        </div>
+    </div>
+
+    <script>
+        let manifest = null;
+        let currentResult = null;
+
+        // Load manifest on page load
+        async function loadManifest() {
+            try {
+                const response = await fetch('manifest.json');
+                manifest = await response.json();
+                renderResults();
+            } catch (e) {
+                document.getElementById('resultsGrid').innerHTML =
+                    '<div class="no-results">No results found. Run the benchmark first.</div>';
+            }
+        }
+
+        function getScoreClass(score) {
+            if (score <= 10) return 'score-excellent';
+            if (score <= 25) return 'score-good';
+            if (score <= 40) return 'score-moderate';
+            if (score <= 60) return 'score-concerning';
+            return 'score-poor';
+        }
+
+        function getProviderClass(provider) {
+            if (!provider) return '';
+            const p = provider.toLowerCase();
+            if (p.includes('openai')) return 'badge-openai';
+            if (p.includes('anthropic')) return 'badge-anthropic';
+            if (p.includes('google')) return 'badge-google';
+            return '';
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return '';
+            const date = new Date(timestamp);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function filterAndSort() {
+            if (!manifest) return [];
+
+            const providerFilter = document.getElementById('providerFilter').value;
+            const modeFilter = document.getElementById('modeFilter').value;
+            const sortBy = document.getElementById('sortBy').value;
+
+            let results = [...manifest.results];
+
+            // Filter
+            if (providerFilter) {
+                results = results.filter(r => r.target_provider.toLowerCase().includes(providerFilter));
+            }
+            if (modeFilter) {
+                results = results.filter(r => r.mode === modeFilter);
+            }
+
+            // Sort
+            switch (sortBy) {
+                case 'date':
+                    results.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+                    break;
+                case 'score_asc':
+                    results.sort((a, b) => (a.afim_score || 0) - (b.afim_score || 0));
+                    break;
+                case 'score_desc':
+                    results.sort((a, b) => (b.afim_score || 0) - (a.afim_score || 0));
+                    break;
+                case 'model':
+                    results.sort((a, b) => (a.target_model || '').localeCompare(b.target_model || ''));
+                    break;
+            }
+
+            return results;
+        }
+
+        function renderResults() {
+            const results = filterAndSort();
+            const grid = document.getElementById('resultsGrid');
+
+            if (results.length === 0) {
+                grid.innerHTML = '<div class="no-results">No results match your filters.</div>';
+                return;
+            }
+
+            grid.innerHTML = results.map(r => `
+                <div class="result-card" onclick="openResult('${r.filename}')" data-filename="${r.filename}">
+                    <div class="result-header">
+                        <div>
+                            <div class="result-model">${escapeHtml(r.target_model)}</div>
+                            <div class="result-meta">
+                                <span class="badge ${getProviderClass(r.target_provider)}">${escapeHtml(r.target_provider)}</span>
+                                <span class="badge badge-${r.mode}">${r.mode === 'multiturn' ? 'Multi-Turn' : 'Single-Turn'}</span>
+                            </div>
+                        </div>
+                        <div class="result-score ${getScoreClass(r.afim_score)}">${r.afim_score.toFixed(1)}</div>
+                    </div>
+                    ${r.mode === 'multiturn' && r.resistance_score !== undefined ? `
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            Resistance: ${r.resistance_score.toFixed(1)} | Softening: ${((r.softening_rate || 0) * 100).toFixed(0)}%
+                        </div>
+                    ` : ''}
+                    <div class="result-date">${formatDate(r.timestamp)} &bull; ${r.num_tests} tests</div>
+                </div>
+            `).join('');
+        }
+
+        function openResult(filename) {
+            currentResult = filename;
+
+            // Update selection state
+            document.querySelectorAll('.result-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.filename === filename);
+            });
+
+            // Load in iframe with viewer
+            const frame = document.getElementById('viewerFrame');
+            frame.src = 'view_results.html?file=' + encodeURIComponent(filename);
+
+            document.getElementById('viewerTitle').textContent = filename.replace('_final.json', '');
+            document.getElementById('viewerContainer').classList.add('visible');
+
+            // Scroll to viewer
+            document.getElementById('viewerContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeViewer() {
+            document.getElementById('viewerContainer').classList.remove('visible');
+            document.querySelectorAll('.result-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            currentResult = null;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Event listeners
+        document.getElementById('providerFilter').addEventListener('change', renderResults);
+        document.getElementById('modeFilter').addEventListener('change', renderResults);
+        document.getElementById('sortBy').addEventListener('change', renderResults);
+
+        // Initialize
+        loadManifest();
+    </script>
+</body>
+</html>
+'''
+
+    with open(output_path, "w") as f:
+        f.write(html)
+
+    print(f"Generated: {output_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate static results site")
+    parser.add_argument(
+        "--output-dir", "-o",
+        default="data/results",
+        help="Directory containing results (default: data/results)"
+    )
+    args = parser.parse_args()
+
+    results_dir = Path(args.output_dir)
+    if not results_dir.exists():
+        print(f"Error: Directory not found: {results_dir}")
+        return 1
+
+    # Find all results
+    print(f"Scanning {results_dir} for results...")
+    results = find_result_files(results_dir)
+    print(f"Found {len(results)} result files")
+
+    if not results:
+        print("No results found. Run the benchmark first.")
+        return 1
+
+    # Generate manifest
+    manifest_path = results_dir / "manifest.json"
+    generate_manifest(results, manifest_path)
+
+    # Generate index
+    index_path = results_dir / "index.html"
+    generate_index_html(index_path)
+
+    # Copy viewer to results dir
+    viewer_src = Path(__file__).parent / "view_results.html"
+    viewer_dst = results_dir / "view_results.html"
+
+    if viewer_src.exists():
+        import shutil
+        shutil.copy(viewer_src, viewer_dst)
+        print(f"Copied: {viewer_dst}")
+    else:
+        print(f"Warning: {viewer_src} not found")
+
+    print(f"\nStatic site generated in: {results_dir}")
+    print(f"Serve with: python -m http.server -d {results_dir}")
+    print(f"Or copy to your public_html directory")
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())

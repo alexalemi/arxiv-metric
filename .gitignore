@@ -49,6 +49,7 @@ htmlcov/
 # Results data (keep structure, ignore actual results)
 data/results/*.json
 data/results/*.txt
+data/results/*.html
 
 # OS
 .DS_Store

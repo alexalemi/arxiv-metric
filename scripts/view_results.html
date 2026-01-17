@@ -101,6 +101,27 @@
             display: block;
         }
 
+        /* Mode Badge */
+        .mode-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 1rem;
+        }
+
+        .mode-single {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .mode-multiturn {
+            background: rgba(139, 92, 246, 0.2);
+            color: #a78bfa;
+        }
+
         /* Summary Header */
         .summary-header {
             display: grid;
@@ -154,7 +175,7 @@
 
         .meta-info {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 1rem;
             align-content: center;
         }
@@ -196,6 +217,11 @@
         .badge-anthropic {
             background: rgba(139, 92, 246, 0.2);
             color: #a78bfa;
+        }
+
+        .badge-google {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
         }
 
         /* Charts Row */
@@ -367,6 +393,21 @@
         .category-EVASION_TACTICS { background: rgba(220, 38, 38, 0.2); color: #dc2626; }
         .category-FULL_FACILITATION { background: rgba(153, 27, 27, 0.2); color: #b91c1c; }
 
+        .trend-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.6875rem;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .trend-stable_refusal { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+        .trend-hardening { background: rgba(132, 204, 22, 0.2); color: #84cc16; }
+        .trend-oscillating { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .trend-softening { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .trend-stable_compliance { background: rgba(153, 27, 27, 0.2); color: #b91c1c; }
+
         .score-pill {
             display: inline-block;
             padding: 0.125rem 0.5rem;
@@ -483,6 +524,99 @@
             font-style: italic;
         }
 
+        /* Conversation Thread */
+        .conversation-thread {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .turn {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .turn-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 40px;
+        }
+
+        .turn-number {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .turn-line {
+            flex: 1;
+            width: 2px;
+            background: var(--border-color);
+            margin-top: 0.25rem;
+        }
+
+        .turn-user .turn-number {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .turn-assistant .turn-number {
+            background: var(--accent-purple);
+            color: white;
+        }
+
+        .turn-content {
+            flex: 1;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+        }
+
+        .turn-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .turn-role {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .turn-text {
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+
+        .category-progression {
+            display: flex;
+            gap: 0.25rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .category-progression-item {
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.625rem;
+            font-weight: 600;
+        }
+
+        .category-progression-arrow {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
         /* Expand Icon */
         .expand-icon {
             display: inline-block;
@@ -581,7 +715,7 @@
         <div id="fileLoader" class="file-loader">
             <div class="file-loader-icon">&#128196;</div>
             <p>Drag & drop a results JSON file here</p>
-            <p class="hint">or click to select a *_final.json file</p>
+            <p class="hint">or click to select a *_final.json file (single-turn or multi-turn)</p>
             <input type="file" id="fileInput" class="file-input" accept=".json">
         </div>
 
@@ -589,6 +723,7 @@
         <div id="resultsContainer" class="results-container">
             <div class="header-row">
                 <h2 id="resultsTitle">Results</h2>
+                <span id="modeBadge" class="mode-badge"></span>
                 <button class="load-another" onclick="resetLoader()">Load Another File</button>
             </div>
 
@@ -597,46 +732,25 @@
                 <div class="score-gauge">
                     <div id="scoreCircle" class="score-circle">
                         <span id="scoreValue" class="score-value">0</span>
-                        <span class="score-label">AFIM Score</span>
+                        <span id="scoreLabel" class="score-label">AFIM Score</span>
                     </div>
                     <div id="scoreCi" class="score-ci">CI: [0, 0]</div>
                 </div>
-                <div class="meta-info">
-                    <div class="meta-item">
-                        <div class="meta-item-label">Target Model</div>
-                        <div class="meta-item-value">
-                            <span id="targetModel">-</span>
-                            <span id="targetProviderBadge" class="badge">-</span>
-                        </div>
-                    </div>
-                    <div class="meta-item">
-                        <div class="meta-item-label">Judge Model</div>
-                        <div class="meta-item-value">
-                            <span id="judgeModel">-</span>
-                            <span id="judgeProviderBadge" class="badge">-</span>
-                        </div>
-                    </div>
-                    <div class="meta-item">
-                        <div class="meta-item-label">Timestamp</div>
-                        <div class="meta-item-value" id="timestamp">-</div>
-                    </div>
-                    <div class="meta-item">
-                        <div class="meta-item-label">Tests Run</div>
-                        <div class="meta-item-value" id="numTests">-</div>
-                    </div>
+                <div id="metaInfo" class="meta-info">
+                    <!-- Populated dynamically -->
                 </div>
             </div>
 
             <!-- Charts Row -->
             <div class="charts-row">
                 <div class="chart-card">
-                    <h2>Score by Escalation Level</h2>
+                    <h2 id="chartLeftTitle">Score by Escalation Level</h2>
                     <div class="chart-container">
                         <canvas id="levelChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h2>Response Category Distribution</h2>
+                    <h2 id="chartRightTitle">Response Category Distribution</h2>
                     <div class="chart-container">
                         <canvas id="categoryChart"></canvas>
                     </div>
@@ -668,6 +782,14 @@
                         <option value="EVASION_TACTICS">Evasion Tactics</option>
                         <option value="FULL_FACILITATION">Full Facilitation</option>
                     </select>
+                    <select id="trendFilter" class="filter-select" style="display: none;">
+                        <option value="">All Trends</option>
+                        <option value="stable_refusal">Stable Refusal</option>
+                        <option value="hardening">Hardening</option>
+                        <option value="oscillating">Oscillating</option>
+                        <option value="softening">Softening</option>
+                        <option value="stable_compliance">Stable Compliance</option>
+                    </select>
                     <button class="export-btn" onclick="exportFiltered()">Export Filtered</button>
                 </div>
                 <div class="stats-row">
@@ -675,15 +797,8 @@
                 </div>
                 <div style="overflow-x: auto;">
                     <table class="results-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 30px;"></th>
-                                <th class="sortable" data-sort="prompt_id">Prompt ID</th>
-                                <th class="sortable" data-sort="escalation_level">Level</th>
-                                <th class="sortable" data-sort="category">Category</th>
-                                <th class="sortable" data-sort="score">Score</th>
-                                <th class="sortable" data-sort="confidence">Confidence</th>
-                            </tr>
+                        <thead id="tableHead">
+                            <!-- Populated dynamically -->
                         </thead>
                         <tbody id="resultsBody">
                         </tbody>
@@ -699,6 +814,7 @@
     <script>
         // Global state
         let data = null;
+        let isMultiTurn = false;
         let filteredResults = [];
         let sortColumn = 'prompt_id';
         let sortDirection = 'asc';
@@ -734,14 +850,31 @@
             'FULL_FACILITATION': 'Full Facilitation'
         };
 
+        const trendNames = {
+            'stable_refusal': 'Stable Refusal',
+            'hardening': 'Hardening',
+            'oscillating': 'Oscillating',
+            'softening': 'Softening',
+            'stable_compliance': 'Stable Compliance'
+        };
+
         // Score color based on value (0-1 for individual, 0-100 for AFIM)
         function getScoreColor(score, maxScore = 1) {
             const normalized = score / maxScore;
-            if (normalized <= 0.1) return '#22c55e';      // Excellent (green)
-            if (normalized <= 0.25) return '#84cc16';     // Good (lime)
-            if (normalized <= 0.4) return '#eab308';      // Moderate (yellow)
-            if (normalized <= 0.6) return '#f97316';      // Concerning (orange)
-            return '#ef4444';                              // Poor (red)
+            if (normalized <= 0.1) return '#22c55e';
+            if (normalized <= 0.25) return '#84cc16';
+            if (normalized <= 0.4) return '#eab308';
+            if (normalized <= 0.6) return '#f97316';
+            return '#ef4444';
+        }
+
+        // For resistance score (inverted - higher is better)
+        function getResistanceColor(score) {
+            if (score >= 80) return '#22c55e';
+            if (score >= 60) return '#84cc16';
+            if (score >= 40) return '#eab308';
+            if (score >= 20) return '#f97316';
+            return '#ef4444';
         }
 
         // Provider badge class
@@ -750,6 +883,7 @@
             const p = provider.toLowerCase();
             if (p.includes('openai')) return 'badge-openai';
             if (p.includes('anthropic')) return 'badge-anthropic';
+            if (p.includes('google')) return 'badge-google';
             return '';
         }
 
@@ -781,6 +915,7 @@
             reader.onload = (e) => {
                 try {
                     data = JSON.parse(e.target.result);
+                    isMultiTurn = data.mode === 'multiturn' || data.trajectories !== undefined;
                     renderResults();
                 } catch (err) {
                     alert('Error parsing JSON file: ' + err.message);
@@ -802,41 +937,129 @@
             document.getElementById('fileLoader').style.display = 'none';
             document.getElementById('resultsContainer').classList.add('visible');
 
+            // Set mode badge
+            const modeBadge = document.getElementById('modeBadge');
+            modeBadge.textContent = isMultiTurn ? 'Multi-Turn' : 'Single-Turn';
+            modeBadge.className = 'mode-badge ' + (isMultiTurn ? 'mode-multiturn' : 'mode-single');
+
+            // Show/hide trend filter
+            document.getElementById('trendFilter').style.display = isMultiTurn ? 'inline-block' : 'none';
+
+            if (isMultiTurn) {
+                renderMultiTurnResults();
+            } else {
+                renderSingleTurnResults();
+            }
+        }
+
+        function renderSingleTurnResults() {
             // Update summary
             const score = data.afim_score || 0;
             const scoreColor = getScoreColor(score, 100);
             const scoreCircle = document.getElementById('scoreCircle');
             scoreCircle.style.borderColor = scoreColor;
-            document.getElementById('scoreValue').textContent = score.toFixed(2);
+            document.getElementById('scoreValue').textContent = score.toFixed(1);
             document.getElementById('scoreValue').style.color = scoreColor;
+            document.getElementById('scoreLabel').textContent = 'AFIM Score';
 
             const ci = data.confidence_interval || [0, 0];
-            document.getElementById('scoreCi').textContent = `95% CI: [${ci[0].toFixed(2)}, ${ci[1].toFixed(2)}]`;
+            document.getElementById('scoreCi').textContent = `95% CI: [${ci[0].toFixed(1)}, ${ci[1].toFixed(1)}]`;
 
-            document.getElementById('targetModel').textContent = data.target_model || '-';
-            const targetBadge = document.getElementById('targetProviderBadge');
-            targetBadge.textContent = data.target_provider || '-';
-            targetBadge.className = 'badge ' + getProviderClass(data.target_provider);
+            // Meta info
+            document.getElementById('metaInfo').innerHTML = `
+                <div class="meta-item">
+                    <div class="meta-item-label">Target Model</div>
+                    <div class="meta-item-value">
+                        ${escapeHtml(data.target_model || '-')}
+                        <span class="badge ${getProviderClass(data.target_provider)}">${escapeHtml(data.target_provider || '-')}</span>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Judge Model</div>
+                    <div class="meta-item-value">
+                        ${escapeHtml(data.judge_model || '-')}
+                        <span class="badge ${getProviderClass(data.judge_provider)}">${escapeHtml(data.judge_provider || '-')}</span>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Timestamp</div>
+                    <div class="meta-item-value">${data.timestamp ? new Date(data.timestamp).toLocaleString() : '-'}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Tests Run</div>
+                    <div class="meta-item-value">${data.num_tests || (data.raw_results ? data.raw_results.length : '-')}</div>
+                </div>
+            `;
 
-            document.getElementById('judgeModel').textContent = data.judge_model || '-';
-            const judgeBadge = document.getElementById('judgeProviderBadge');
-            judgeBadge.textContent = data.judge_provider || '-';
-            judgeBadge.className = 'badge ' + getProviderClass(data.judge_provider);
+            document.getElementById('resultsTitle').textContent = `Results: ${data.target_model || 'Unknown Model'}`;
+            document.getElementById('chartLeftTitle').textContent = 'Score by Escalation Level';
+            document.getElementById('chartRightTitle').textContent = 'Response Category Distribution';
 
-            document.getElementById('timestamp').textContent = data.timestamp ?
-                new Date(data.timestamp).toLocaleString() : '-';
-            document.getElementById('numTests').textContent = data.num_tests ||
-                (data.raw_results ? data.raw_results.length : '-');
-
-            document.getElementById('resultsTitle').textContent =
-                `Results: ${data.target_model || 'Unknown Model'}`;
-
-            // Render charts
             renderLevelChart();
             renderCategoryChart();
-
-            // Render table
+            renderSingleTurnTableHead();
             filteredResults = [...(data.raw_results || [])];
+            applyFiltersAndSort();
+        }
+
+        function renderMultiTurnResults() {
+            // Update summary with trajectory AFIM
+            const score = data.afim_score || 0;
+            const scoreColor = getScoreColor(score, 100);
+            const scoreCircle = document.getElementById('scoreCircle');
+            scoreCircle.style.borderColor = scoreColor;
+            document.getElementById('scoreValue').textContent = score.toFixed(1);
+            document.getElementById('scoreValue').style.color = scoreColor;
+            document.getElementById('scoreLabel').textContent = 'Trajectory AFIM';
+
+            const resistanceScore = data.resistance_score || 0;
+            document.getElementById('scoreCi').textContent = `Resistance: ${resistanceScore.toFixed(1)}/100`;
+
+            // Meta info for multi-turn
+            const softeningRate = (data.softening_rate || 0) * 100;
+            const avgTurns = data.avg_turns_to_compliance;
+
+            document.getElementById('metaInfo').innerHTML = `
+                <div class="meta-item">
+                    <div class="meta-item-label">Target Model</div>
+                    <div class="meta-item-value">
+                        ${escapeHtml(data.target_model || '-')}
+                        <span class="badge ${getProviderClass(data.target_provider)}">${escapeHtml(data.target_provider || '-')}</span>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Judge Model</div>
+                    <div class="meta-item-value">
+                        ${escapeHtml(data.judge_model || '-')}
+                        <span class="badge ${getProviderClass(data.judge_provider)}">${escapeHtml(data.judge_provider || '-')}</span>
+                    </div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Resistance Score</div>
+                    <div class="meta-item-value" style="color: ${getResistanceColor(resistanceScore)}">${resistanceScore.toFixed(1)}/100</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Softening Rate</div>
+                    <div class="meta-item-value" style="color: ${softeningRate > 30 ? '#ef4444' : softeningRate > 10 ? '#eab308' : '#22c55e'}">${softeningRate.toFixed(1)}%</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Avg Turns to Compliance</div>
+                    <div class="meta-item-value">${avgTurns ? avgTurns.toFixed(1) : 'N/A'}</div>
+                </div>
+                <div class="meta-item">
+                    <div class="meta-item-label">Tests Run</div>
+                    <div class="meta-item-value">${data.num_tests || (data.trajectories ? data.trajectories.length : '-')}</div>
+                </div>
+            `;
+
+            document.getElementById('resultsTitle').textContent = `Results: ${data.target_model || 'Unknown Model'}`;
+            document.getElementById('chartLeftTitle').textContent = 'Trend Distribution';
+            document.getElementById('chartRightTitle').textContent = 'Final Category Distribution';
+
+            renderTrendChart();
+            renderCategoryChart();
+            renderMultiTurnTableHead();
+            filteredResults = [...(data.trajectories || [])];
             applyFiltersAndSort();
         }
 
@@ -891,6 +1114,64 @@
             });
         }
 
+        function renderTrendChart() {
+            const ctx = document.getElementById('levelChart').getContext('2d');
+
+            if (levelChart) levelChart.destroy();
+
+            const trendDist = data.trend_distribution || {};
+            const trendKeys = ['stable_refusal', 'hardening', 'oscillating', 'softening', 'stable_compliance'];
+            const labels = trendKeys.map(k => trendNames[k] || k);
+            const values = trendKeys.map(k => trendDist[k] || 0);
+
+            const trendColors = [
+                '#22c55e', // stable_refusal
+                '#84cc16', // hardening
+                '#eab308', // oscillating
+                '#ef4444', // softening
+                '#b91c1c'  // stable_compliance
+            ];
+
+            levelChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: trendColors,
+                        borderRadius: 4,
+                        barThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `Count: ${ctx.raw}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 10 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         function renderCategoryChart() {
             const ctx = document.getElementById('categoryChart').getContext('2d');
 
@@ -902,13 +1183,13 @@
             const values = categoryKeys.map(k => categoryDist[k] || 0);
 
             const categoryColors = [
-                '#22c55e', // EXPLICIT_REFUSAL
-                '#84cc16', // EDUCATIONAL_REDIRECT
-                '#eab308', // PASSIVE_INFORMATION
-                '#f97316', // PROCEDURAL_ASSISTANCE
-                '#ef4444', // CONTENT_GENERATION
-                '#dc2626', // EVASION_TACTICS
-                '#b91c1c'  // FULL_FACILITATION
+                '#22c55e',
+                '#84cc16',
+                '#eab308',
+                '#f97316',
+                '#ef4444',
+                '#dc2626',
+                '#b91c1c'
             ];
 
             categoryChart = new Chart(ctx, {
@@ -951,22 +1232,82 @@
             });
         }
 
+        function renderSingleTurnTableHead() {
+            document.getElementById('tableHead').innerHTML = `
+                <tr>
+                    <th style="width: 30px;"></th>
+                    <th class="sortable" data-sort="prompt_id">Prompt ID</th>
+                    <th class="sortable" data-sort="escalation_level">Level</th>
+                    <th class="sortable" data-sort="category">Category</th>
+                    <th class="sortable" data-sort="score">Score</th>
+                    <th class="sortable" data-sort="confidence">Confidence</th>
+                </tr>
+            `;
+            attachSortHandlers();
+        }
+
+        function renderMultiTurnTableHead() {
+            document.getElementById('tableHead').innerHTML = `
+                <tr>
+                    <th style="width: 30px;"></th>
+                    <th class="sortable" data-sort="prompt_id">Prompt ID</th>
+                    <th class="sortable" data-sort="escalation_level">Level</th>
+                    <th class="sortable" data-sort="trend">Trend</th>
+                    <th class="sortable" data-sort="single_turn_equivalent">Final Category</th>
+                    <th class="sortable" data-sort="resistance_score">Resistance</th>
+                    <th class="sortable" data-sort="trajectory_afim">AFIM</th>
+                </tr>
+            `;
+            attachSortHandlers();
+        }
+
+        function attachSortHandlers() {
+            document.querySelectorAll('.results-table th.sortable').forEach(th => {
+                th.addEventListener('click', () => {
+                    const col = th.dataset.sort;
+                    if (sortColumn === col) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortColumn = col;
+                        sortDirection = 'asc';
+                    }
+                    applyFiltersAndSort();
+                });
+            });
+        }
+
         function applyFiltersAndSort() {
             const search = document.getElementById('searchInput').value.toLowerCase();
             const levelFilter = document.getElementById('levelFilter').value;
             const categoryFilter = document.getElementById('categoryFilter').value;
+            const trendFilter = document.getElementById('trendFilter').value;
 
-            filteredResults = (data.raw_results || []).filter(r => {
+            const sourceData = isMultiTurn ? (data.trajectories || []) : (data.raw_results || []);
+
+            filteredResults = sourceData.filter(r => {
                 if (levelFilter && r.escalation_level != levelFilter) return false;
-                if (categoryFilter && r.category !== categoryFilter) return false;
+
+                if (isMultiTurn) {
+                    if (categoryFilter && r.single_turn_equivalent !== categoryFilter) return false;
+                    if (trendFilter && r.trend !== trendFilter) return false;
+                } else {
+                    if (categoryFilter && r.category !== categoryFilter) return false;
+                }
+
                 if (search) {
-                    const searchable = [
-                        r.prompt_id,
-                        r.prompt_content,
-                        r.model_response,
-                        r.reasoning,
-                        r.evidence
-                    ].join(' ').toLowerCase();
+                    let searchable;
+                    if (isMultiTurn) {
+                        const turnTexts = (r.turns || []).map(t => t.content).join(' ');
+                        searchable = [r.prompt_id, turnTexts].join(' ').toLowerCase();
+                    } else {
+                        searchable = [
+                            r.prompt_id,
+                            r.prompt_content,
+                            r.model_response,
+                            r.reasoning,
+                            r.evidence
+                        ].join(' ').toLowerCase();
+                    }
                     if (!searchable.includes(search)) return false;
                 }
                 return true;
@@ -979,7 +1320,7 @@
 
                 if (typeof aVal === 'string') {
                     aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
+                    bVal = (bVal || '').toLowerCase();
                 }
 
                 if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -992,7 +1333,8 @@
 
         function renderTable() {
             const tbody = document.getElementById('resultsBody');
-            const total = data.raw_results ? data.raw_results.length : 0;
+            const sourceData = isMultiTurn ? (data.trajectories || []) : (data.raw_results || []);
+            const total = sourceData.length;
 
             document.getElementById('filteredCount').textContent =
                 `Showing ${filteredResults.length} of ${total} results`;
@@ -1005,69 +1347,11 @@
 
             document.getElementById('noResults').style.display = 'none';
 
-            tbody.innerHTML = filteredResults.map((r, idx) => {
-                const scoreColor = getScoreColor(r.score);
-                const isExpanded = expandedRows.has(r.prompt_id);
-
-                return `
-                    <tr class="${isExpanded ? 'expanded' : ''}" onclick="toggleRow('${r.prompt_id}')">
-                        <td><span class="expand-icon">\u25B6</span></td>
-                        <td><span class="prompt-id">${escapeHtml(r.prompt_id)}</span></td>
-                        <td><span class="level-badge level-${r.escalation_level}">${r.escalation_level} - ${levelNames[r.escalation_level]}</span></td>
-                        <td><span class="category-badge category-${r.category}">${categoryNames[r.category] || r.category}</span></td>
-                        <td><span class="score-pill" style="background: ${scoreColor}22; color: ${scoreColor}">${r.score.toFixed(2)}</span></td>
-                        <td>
-                            <div class="confidence-bar">
-                                <div class="confidence-bar-fill" style="width: ${(r.confidence * 100).toFixed(0)}%"></div>
-                            </div>
-                            <span style="margin-left: 0.5rem; color: var(--text-muted); font-size: 0.75rem;">${(r.confidence * 100).toFixed(0)}%</span>
-                        </td>
-                    </tr>
-                    <tr class="detail-row ${isExpanded ? 'visible' : ''}" id="detail-${r.prompt_id}">
-                        <td colspan="6">
-                            <div class="detail-content">
-                                <div class="detail-grid">
-                                    <div class="detail-section">
-                                        <h4>Prompt</h4>
-                                        <pre>${escapeHtml(r.prompt_content)}</pre>
-                                    </div>
-                                    <div class="detail-section">
-                                        <h4>Model Response</h4>
-                                        <pre>${escapeHtml(r.model_response)}</pre>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 1rem;">
-                                    <div class="detail-section">
-                                        <h4>Judgment</h4>
-                                        <div class="judgment-grid">
-                                            <div class="judgment-item">
-                                                <div class="judgment-value" style="color: ${getScoreColor(r.score)}">${r.score.toFixed(2)}</div>
-                                                <div class="judgment-label">Score</div>
-                                            </div>
-                                            <div class="judgment-item">
-                                                <div class="judgment-value">${(r.confidence * 100).toFixed(0)}%</div>
-                                                <div class="judgment-label">Confidence</div>
-                                            </div>
-                                            <div class="judgment-item">
-                                                <div class="judgment-value category-badge category-${r.category}">${categoryNames[r.category] || r.category}</div>
-                                                <div class="judgment-label">Category</div>
-                                            </div>
-                                        </div>
-                                        ${r.evidence ? `
-                                            <div class="evidence-text">
-                                                <h4 style="margin-bottom: 0.5rem;">Key Evidence</h4>
-                                                <pre>${escapeHtml(r.evidence)}</pre>
-                                            </div>
-                                        ` : ''}
-                                        <h4>Reasoning</h4>
-                                        <pre>${escapeHtml(r.reasoning || '')}</pre>
-                                    </div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+            if (isMultiTurn) {
+                tbody.innerHTML = filteredResults.map((r, idx) => renderMultiTurnRow(r)).join('');
+            } else {
+                tbody.innerHTML = filteredResults.map((r, idx) => renderSingleTurnRow(r)).join('');
+            }
 
             // Update sort indicators
             document.querySelectorAll('.results-table th.sortable').forEach(th => {
@@ -1076,6 +1360,154 @@
                     th.classList.add(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
                 }
             });
+        }
+
+        function renderSingleTurnRow(r) {
+            const scoreColor = getScoreColor(r.score);
+            const isExpanded = expandedRows.has(r.prompt_id);
+
+            return `
+                <tr class="${isExpanded ? 'expanded' : ''}" onclick="toggleRow('${r.prompt_id}')">
+                    <td><span class="expand-icon">\u25B6</span></td>
+                    <td><span class="prompt-id">${escapeHtml(r.prompt_id)}</span></td>
+                    <td><span class="level-badge level-${r.escalation_level}">${r.escalation_level} - ${levelNames[r.escalation_level]}</span></td>
+                    <td><span class="category-badge category-${r.category}">${categoryNames[r.category] || r.category}</span></td>
+                    <td><span class="score-pill" style="background: ${scoreColor}22; color: ${scoreColor}">${r.score.toFixed(2)}</span></td>
+                    <td>
+                        <div class="confidence-bar">
+                            <div class="confidence-bar-fill" style="width: ${(r.confidence * 100).toFixed(0)}%"></div>
+                        </div>
+                        <span style="margin-left: 0.5rem; color: var(--text-muted); font-size: 0.75rem;">${(r.confidence * 100).toFixed(0)}%</span>
+                    </td>
+                </tr>
+                <tr class="detail-row ${isExpanded ? 'visible' : ''}" id="detail-${r.prompt_id}">
+                    <td colspan="6">
+                        <div class="detail-content">
+                            <div class="detail-grid">
+                                <div class="detail-section">
+                                    <h4>Prompt</h4>
+                                    <pre>${escapeHtml(r.prompt_content)}</pre>
+                                </div>
+                                <div class="detail-section">
+                                    <h4>Model Response</h4>
+                                    <pre>${escapeHtml(r.model_response)}</pre>
+                                </div>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <div class="detail-section">
+                                    <h4>Judgment</h4>
+                                    <div class="judgment-grid">
+                                        <div class="judgment-item">
+                                            <div class="judgment-value" style="color: ${getScoreColor(r.score)}">${r.score.toFixed(2)}</div>
+                                            <div class="judgment-label">Score</div>
+                                        </div>
+                                        <div class="judgment-item">
+                                            <div class="judgment-value">${(r.confidence * 100).toFixed(0)}%</div>
+                                            <div class="judgment-label">Confidence</div>
+                                        </div>
+                                        <div class="judgment-item">
+                                            <div class="judgment-value category-badge category-${r.category}">${categoryNames[r.category] || r.category}</div>
+                                            <div class="judgment-label">Category</div>
+                                        </div>
+                                    </div>
+                                    ${r.evidence ? `
+                                        <div class="evidence-text">
+                                            <h4 style="margin-bottom: 0.5rem;">Key Evidence</h4>
+                                            <pre>${escapeHtml(r.evidence)}</pre>
+                                        </div>
+                                    ` : ''}
+                                    <h4>Reasoning</h4>
+                                    <pre>${escapeHtml(r.reasoning || '')}</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        function renderMultiTurnRow(r) {
+            const afimColor = getScoreColor(r.trajectory_afim, 100);
+            const resistanceColor = getResistanceColor(r.resistance_score);
+            const isExpanded = expandedRows.has(r.prompt_id);
+            const trend = r.trend || 'unknown';
+            const finalCat = r.single_turn_equivalent || (r.category_progression ? r.category_progression[r.category_progression.length - 1] : 'UNKNOWN');
+
+            return `
+                <tr class="${isExpanded ? 'expanded' : ''}" onclick="toggleRow('${r.prompt_id}')">
+                    <td><span class="expand-icon">\u25B6</span></td>
+                    <td><span class="prompt-id">${escapeHtml(r.prompt_id)}</span></td>
+                    <td><span class="level-badge level-${r.escalation_level}">${r.escalation_level} - ${levelNames[r.escalation_level]}</span></td>
+                    <td><span class="trend-badge trend-${trend}">${trendNames[trend] || trend}</span></td>
+                    <td><span class="category-badge category-${finalCat}">${categoryNames[finalCat] || finalCat}</span></td>
+                    <td><span class="score-pill" style="background: ${resistanceColor}22; color: ${resistanceColor}">${r.resistance_score.toFixed(1)}</span></td>
+                    <td><span class="score-pill" style="background: ${afimColor}22; color: ${afimColor}">${r.trajectory_afim.toFixed(1)}</span></td>
+                </tr>
+                <tr class="detail-row ${isExpanded ? 'visible' : ''}" id="detail-${r.prompt_id}">
+                    <td colspan="7">
+                        <div class="detail-content">
+                            <div class="detail-section" style="margin-bottom: 1rem;">
+                                <h4>Metrics</h4>
+                                <div class="judgment-grid" style="grid-template-columns: repeat(5, 1fr);">
+                                    <div class="judgment-item">
+                                        <div class="judgment-value" style="color: ${resistanceColor}">${r.resistance_score.toFixed(1)}</div>
+                                        <div class="judgment-label">Resistance</div>
+                                    </div>
+                                    <div class="judgment-item">
+                                        <div class="judgment-value">${(r.softening_index * 100).toFixed(0)}%</div>
+                                        <div class="judgment-label">Softening</div>
+                                    </div>
+                                    <div class="judgment-item">
+                                        <div class="judgment-value" style="color: ${afimColor}">${r.trajectory_afim.toFixed(1)}</div>
+                                        <div class="judgment-label">AFIM</div>
+                                    </div>
+                                    <div class="judgment-item">
+                                        <div class="judgment-value">${r.turns_to_compliance || 'N/A'}</div>
+                                        <div class="judgment-label">Compliance Turn</div>
+                                    </div>
+                                    <div class="judgment-item">
+                                        <div class="judgment-value trend-badge trend-${trend}">${trendNames[trend] || trend}</div>
+                                        <div class="judgment-label">Trend</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="detail-section" style="margin-bottom: 1rem;">
+                                <h4>Category Progression</h4>
+                                <div class="category-progression">
+                                    ${(r.category_progression || []).map((cat, i) => `
+                                        ${i > 0 ? '<span class="category-progression-arrow">\u2192</span>' : ''}
+                                        <span class="category-progression-item category-badge category-${cat}">${categoryNames[cat] || cat}</span>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            <div class="detail-section">
+                                <h4>Conversation</h4>
+                                <div class="conversation-thread">
+                                    ${(r.turns || []).map((turn, i) => {
+                                        const isLast = i === r.turns.length - 1;
+                                        return `
+                                            <div class="turn turn-${turn.role}">
+                                                <div class="turn-indicator">
+                                                    <div class="turn-number">${turn.turn_number || (i + 1)}</div>
+                                                    ${!isLast ? '<div class="turn-line"></div>' : ''}
+                                                </div>
+                                                <div class="turn-content">
+                                                    <div class="turn-header">
+                                                        <span class="turn-role">${turn.role}</span>
+                                                        ${turn.category ? `<span class="category-badge category-${turn.category}">${categoryNames[turn.category] || turn.category}</span>` : ''}
+                                                        ${turn.tactic ? `<span style="color: var(--text-muted); font-size: 0.75rem;">(${turn.tactic})</span>` : ''}
+                                                    </div>
+                                                    <div class="turn-text">${escapeHtml(turn.content)}</div>
+                                                </div>
+                                            </div>
+                                        `;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
 
         function toggleRow(promptId) {
@@ -1098,29 +1530,42 @@
         document.getElementById('searchInput').addEventListener('input', applyFiltersAndSort);
         document.getElementById('levelFilter').addEventListener('change', applyFiltersAndSort);
         document.getElementById('categoryFilter').addEventListener('change', applyFiltersAndSort);
+        document.getElementById('trendFilter').addEventListener('change', applyFiltersAndSort);
 
-        // Sort headers
-        document.querySelectorAll('.results-table th.sortable').forEach(th => {
-            th.addEventListener('click', () => {
-                const col = th.dataset.sort;
-                if (sortColumn === col) {
-                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                } else {
-                    sortColumn = col;
-                    sortDirection = 'asc';
-                }
-                applyFiltersAndSort();
-            });
-        });
+        // Check for file in query params (for embedding in index.html)
+        (function loadFromQueryParam() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const fileParam = urlParams.get('file');
+            if (fileParam) {
+                fetch(fileParam)
+                    .then(r => {
+                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                        return r.json();
+                    })
+                    .then(jsonData => {
+                        data = jsonData;
+                        isMultiTurn = data.mode === 'multiturn' || data.trajectories !== undefined;
+                        renderResults();
+                    })
+                    .catch(e => {
+                        console.error('Failed to load file from query param:', e);
+                        document.getElementById('fileLoader').innerHTML = `
+                            <div class="file-loader-icon">&#9888;</div>
+                            <p style="color: #ef4444;">Failed to load: ${fileParam}</p>
+                            <p class="hint">${e.message}</p>
+                        `;
+                    });
+            }
+        })();
 
         // Export filtered results
         function exportFiltered() {
             const exportData = {
                 ...data,
-                raw_results: filteredResults,
+                [isMultiTurn ? 'trajectories' : 'raw_results']: filteredResults,
                 export_info: {
                     filtered_count: filteredResults.length,
-                    total_count: data.raw_results ? data.raw_results.length : 0,
+                    total_count: isMultiTurn ? (data.trajectories || []).length : (data.raw_results || []).length,
                     exported_at: new Date().toISOString()
                 }
             };
