@@ -36,6 +36,7 @@ class MultiTurnConfig:
         "openai": 60,
         "anthropic": 50,
         "google": 60,
+        "xai": 60,
     })
     max_concurrent_per_provider: int = 5
 
@@ -269,26 +270,33 @@ class MultiTurnRunner:
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S_mt")
         results: List[MultiTurnTestResult] = []
         raw_results: List[Dict] = []
+        results_lock = asyncio.Lock()
 
-        # Run conversations with progress bar
-        with tqdm(total=len(prompts), desc=f"Multi-turn: {self.target.model}") as pbar:
-            for prompt in prompts:
-                try:
-                    result = await self.run_single_conversation(prompt)
+        async def process_conversation(prompt: TestPrompt, pbar: tqdm) -> None:
+            """Process a single conversation and add results to shared list."""
+            try:
+                result = await self.run_single_conversation(prompt)
+
+                # Save raw for inspection
+                raw_result = self._serialize_result(result)
+
+                async with results_lock:
                     results.append(result)
-
-                    # Save raw for inspection
-                    raw_result = self._serialize_result(result)
                     raw_results.append(raw_result)
 
                     # Incremental save
                     if self.config.save_incremental:
                         self._save_incremental(run_id, raw_results)
 
-                except Exception as e:
-                    tqdm.write(f"Error on {prompt.id}: {e}")
-
+            except Exception as e:
+                tqdm.write(f"Error on {prompt.id}: {e}")
+            finally:
                 pbar.update(1)
+
+        # Run conversations concurrently with progress bar
+        with tqdm(total=len(prompts), desc=f"Multi-turn: {self.target.model}") as pbar:
+            tasks = [process_conversation(prompt, pbar) for prompt in prompts]
+            await asyncio.gather(*tasks)
 
         # Calculate aggregate metrics
         aggregates = calculate_aggregate_metrics(results)

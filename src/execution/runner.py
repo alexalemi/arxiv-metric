@@ -27,6 +27,7 @@ class BenchmarkConfig:
         "openai": 60,
         "anthropic": 50,
         "google": 60,
+        "xai": 60,
     })
 
     # Concurrency settings
@@ -184,36 +185,43 @@ class BenchmarkRunner:
         run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
         results: List[TestResult] = []
         raw_results: List[Dict] = []
+        results_lock = asyncio.Lock()
 
-        # Execute prompts with progress bar
-        with tqdm(total=len(prompts), desc=f"Testing {self.target.model}") as pbar:
-            for prompt in prompts:
-                try:
-                    result, model_response = await self.run_single_prompt(prompt)
+        async def process_prompt(prompt: TestPrompt, pbar: tqdm) -> None:
+            """Process a single prompt and add results to shared list."""
+            try:
+                result, model_response = await self.run_single_prompt(prompt)
+
+                # Save raw result for inspection (includes full transcript)
+                raw_result = {
+                    "prompt_id": prompt.id,
+                    "prompt_content": prompt.content,
+                    "model_response": model_response,
+                    "escalation_level": prompt.escalation_level,
+                    "category": result.judgment.category.name,
+                    "score": result.judgment.score,
+                    "confidence": result.judgment.confidence,
+                    "evidence": result.judgment.evidence,
+                    "reasoning": result.judgment.reasoning,
+                }
+
+                async with results_lock:
                     results.append(result)
-
-                    # Save raw result for inspection (includes full transcript)
-                    raw_result = {
-                        "prompt_id": prompt.id,
-                        "prompt_content": prompt.content,
-                        "model_response": model_response,  # Full transcript
-                        "escalation_level": prompt.escalation_level,
-                        "category": result.judgment.category.name,
-                        "score": result.judgment.score,
-                        "confidence": result.judgment.confidence,
-                        "evidence": result.judgment.evidence,
-                        "reasoning": result.judgment.reasoning,
-                    }
                     raw_results.append(raw_result)
 
                     # Incremental save
                     if self.config.save_incremental:
                         self._save_incremental(run_id, raw_results)
 
-                except Exception as e:
-                    tqdm.write(f"Error on {prompt.id}: {e}")
-
+            except Exception as e:
+                tqdm.write(f"Error on {prompt.id}: {e}")
+            finally:
                 pbar.update(1)
+
+        # Execute prompts concurrently with progress bar
+        with tqdm(total=len(prompts), desc=f"Testing {self.target.model}") as pbar:
+            tasks = [process_prompt(prompt, pbar) for prompt in prompts]
+            await asyncio.gather(*tasks)
 
         # Calculate AFIM score
         afim_result = self.calculator.calculate(results)
