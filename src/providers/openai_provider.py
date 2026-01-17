@@ -20,7 +20,7 @@ class OpenAIProvider(LLMProvider):
     FIXED_TEMP_MODELS = ["gpt-5", "o1", "o3"]
 
     # Higher token limit for reasoning models that produce verbose output
-    REASONING_MODEL_MAX_TOKENS = 8192
+    REASONING_MODEL_MAX_TOKENS = 16384
 
     def __init__(self, model: str = "gpt-4o", api_key: Optional[str] = None):
         super().__init__(model, api_key)
