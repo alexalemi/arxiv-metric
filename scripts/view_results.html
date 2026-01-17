@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AFIM Benchmark Results Viewer</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
     <style>
         :root {
             --bg-primary: #0f172a;
@@ -602,6 +603,99 @@
             line-height: 1.6;
         }
 
+        /* Markdown rendering in turn text */
+        .turn-text h1, .turn-text h2, .turn-text h3, .turn-text h4, .turn-text h5, .turn-text h6 {
+            margin: 0.75rem 0 0.5rem 0;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .turn-text h1 { font-size: 1.25rem; }
+        .turn-text h2 { font-size: 1.125rem; }
+        .turn-text h3 { font-size: 1rem; }
+        .turn-text h4 { font-size: 0.9375rem; }
+
+        .turn-text p {
+            margin: 0.5rem 0;
+        }
+
+        .turn-text ul, .turn-text ol {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .turn-text li {
+            margin: 0.25rem 0;
+        }
+
+        .turn-text code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.8125rem;
+        }
+
+        .turn-text pre {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.75rem;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 0.75rem 0;
+        }
+
+        .turn-text pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .turn-text blockquote {
+            border-left: 3px solid var(--border-color);
+            padding-left: 1rem;
+            margin: 0.75rem 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .turn-text a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .turn-text a:hover {
+            text-decoration: underline;
+        }
+
+        .turn-text table {
+            border-collapse: collapse;
+            margin: 0.75rem 0;
+            width: 100%;
+        }
+
+        .turn-text th, .turn-text td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .turn-text th {
+            background: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        .turn-text img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 0.5rem 0;
+        }
+
+        .turn-text hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 1rem 0;
+        }
+
         .category-progression {
             display: flex;
             gap: 0.25rem;
@@ -1171,6 +1265,25 @@
             if (p.includes('google')) return 'badge-google';
             if (p.includes('xai') || p.includes('grok')) return 'badge-xai';
             return '';
+        }
+
+        // Configure marked for safe markdown rendering
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            mangle: false
+        });
+
+        // Render markdown safely
+        function renderMarkdown(text) {
+            if (!text) return '';
+            try {
+                return marked.parse(text);
+            } catch (e) {
+                console.error('Markdown parsing error:', e);
+                return escapeHtml(text);
+            }
         }
 
         // Initialize file loader
@@ -1783,7 +1896,7 @@
                                                         ${turn.category ? `<span class="category-badge category-${turn.category}">${categoryNames[turn.category] || turn.category}</span>` : ''}
                                                         ${turn.tactic ? `<span style="color: var(--text-muted); font-size: 0.75rem;">(${turn.tactic})</span>` : ''}
                                                     </div>
-                                                    <div class="turn-text">${escapeHtml(turn.content)}</div>
+                                                    <div class="turn-text">${renderMarkdown(turn.content)}</div>
                                                 </div>
                                             </div>
                                         `;
