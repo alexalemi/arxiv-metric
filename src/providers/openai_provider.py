@@ -11,7 +11,7 @@ from .base import LLMProvider, LLMResponse, Message
 class OpenAIProvider(LLMProvider):
     """OpenAI API provider for GPT models."""
 
-    SUPPORTED_MODELS = ["gpt-5.1", "gpt-5.2", "gpt-4o", "gpt-4o-mini"]
+    SUPPORTED_MODELS = ["gpt-5", "gpt-5.1", "gpt-5.2", "gpt-4o", "gpt-4o-mini"]
 
     # Models that require max_completion_tokens instead of max_tokens
     NEW_PARAM_MODELS = ["gpt-5", "o1", "o3"]
