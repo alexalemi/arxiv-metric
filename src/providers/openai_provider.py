@@ -19,6 +19,9 @@ class OpenAIProvider(LLMProvider):
     # Models that only support temperature=1 (no customization)
     FIXED_TEMP_MODELS = ["gpt-5", "o1", "o3"]
 
+    # Higher token limit for reasoning models that produce verbose output
+    REASONING_MODEL_MAX_TOKENS = 8192
+
     def __init__(self, model: str = "gpt-4o", api_key: Optional[str] = None):
         super().__init__(model, api_key)
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -62,17 +65,27 @@ class OpenAIProvider(LLMProvider):
             kwargs["temperature"] = temperature
 
         if self._uses_new_token_param():
-            kwargs["max_completion_tokens"] = max_tokens
+            # Use higher limit for reasoning models unless explicitly set lower
+            effective_max = max(max_tokens, self.REASONING_MODEL_MAX_TOKENS)
+            kwargs["max_completion_tokens"] = effective_max
         else:
             kwargs["max_tokens"] = max_tokens
 
         response = await self._client.chat.completions.create(**kwargs)
 
+        if not response.choices:
+            raise ValueError(f"No choices returned from {self.model}")
+
         choice = response.choices[0]
         usage = response.usage
 
+        if not choice.message.content:
+            raise ValueError(
+                f"Empty response from {self.model}: finish_reason={choice.finish_reason}"
+            )
+
         return LLMResponse(
-            content=choice.message.content or "",
+            content=choice.message.content,
             model=response.model,
             provider=self.provider_name,
             input_tokens=usage.prompt_tokens if usage else 0,
@@ -107,17 +120,27 @@ class OpenAIProvider(LLMProvider):
             kwargs["temperature"] = temperature
 
         if self._uses_new_token_param():
-            kwargs["max_completion_tokens"] = max_tokens
+            # Use higher limit for reasoning models unless explicitly set lower
+            effective_max = max(max_tokens, self.REASONING_MODEL_MAX_TOKENS)
+            kwargs["max_completion_tokens"] = effective_max
         else:
             kwargs["max_tokens"] = max_tokens
 
         response = await self._client.chat.completions.create(**kwargs)
 
+        if not response.choices:
+            raise ValueError(f"No choices returned from {self.model}")
+
         choice = response.choices[0]
         usage = response.usage
 
+        if not choice.message.content:
+            raise ValueError(
+                f"Empty response from {self.model}: finish_reason={choice.finish_reason}"
+            )
+
         return LLMResponse(
-            content=choice.message.content or "",
+            content=choice.message.content,
             model=response.model,
             provider=self.provider_name,
             input_tokens=usage.prompt_tokens if usage else 0,

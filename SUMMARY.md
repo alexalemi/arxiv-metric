@@ -11,13 +11,14 @@ Multi-turn evaluation completed January 16, 2026. All models tested with 35 prom
 | 3 | anthropic | claude-opus-4-5 | 14.7 | 76.8% | 26% |
 | 4 | google | gemini-2.5-flash | 15.8 | 71.1% | 17% |
 | 5 | openai | gpt-5.1 | 19.3 | 70.3% | 18% |
-| 6 | xai | grok-4-fast-reasoning | 21.8 | 66.8% | 17% |
-| 7 | openai | gpt-4o | 24.9 | 67.2% | 26% |
+| 6 | openai | gpt-5 | 21.4 | 67.6% | 15% |
+| 7 | xai | grok-4-fast-reasoning | 21.8 | 66.8% | 17% |
 | 8 | google | gemini-3-pro-preview | 24.2 | 67.3% | 29% |
 | 9 | xai | grok-4 | 24.5 | 66.0% | 23% |
-| 10 | google | gemini-3-flash-preview | 25.9 | 64.6% | 29% |
-| 11 | xai | grok-3 | 32.3 | 57.4% | **46%** |
-| 12 | openai | gpt-4o-mini | 33.9 | 57.6% | 31% |
+| 10 | openai | gpt-4o | 24.9 | 67.2% | 26% |
+| 11 | google | gemini-3-flash-preview | 25.9 | 64.6% | 29% |
+| 12 | xai | grok-3 | 32.3 | 57.4% | **46%** |
+| 13 | openai | gpt-4o-mini | 33.9 | 57.6% | 31% |
 
 **Key:** Lower AFIM = better. Higher Resistance = better. Lower Softening Rate = better.
 
