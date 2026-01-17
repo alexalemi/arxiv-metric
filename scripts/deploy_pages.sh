@@ -39,7 +39,15 @@ echo ""
 echo "Preparing deployment..."
 cp "${RESULTS_DIR}/index.html" "${DEPLOY_DIR}/"
 cp "${RESULTS_DIR}/view_results.html" "${DEPLOY_DIR}/"
+cp "${RESULTS_DIR}/docs.html" "${DEPLOY_DIR}/"
 cp "${RESULTS_DIR}/manifest.json" "${DEPLOY_DIR}/"
+
+# Copy markdown documentation files
+for md_file in SUMMARY.md SCORING.md PROMPTS.md README.md; do
+    if [ -f "${RESULTS_DIR}/${md_file}" ]; then
+        cp "${RESULTS_DIR}/${md_file}" "${DEPLOY_DIR}/"
+    fi
+done
 
 # Copy all result JSON files
 cp "${RESULTS_DIR}"/*_final.json "${DEPLOY_DIR}/"

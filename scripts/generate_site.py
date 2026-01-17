@@ -283,9 +283,82 @@ def generate_index_html(output_path: Path) -> None:
             color: var(--text-muted);
             font-size: 0.875rem;
         }
+
+        /* Navigation Bar */
+        .site-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        @media (max-width: 640px) {
+            .site-nav {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 1rem;
+            }
+
+            .nav-tabs {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-tab {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.8125rem;
+            }
+        }
     </style>
 </head>
 <body>
+    <nav class="site-nav">
+        <div class="nav-brand">AFIM Benchmark</div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab active">Results</a>
+            <a href="docs.html?page=summary" class="nav-tab">Summary</a>
+            <a href="docs.html?page=scoring" class="nav-tab">Scoring</a>
+            <a href="docs.html?page=prompts" class="nav-tab">Prompts</a>
+            <a href="docs.html?page=readme" class="nav-tab">About</a>
+        </div>
+    </nav>
+
     <div class="container">
         <h1>AFIM Benchmark Results</h1>
         <p class="subtitle">Academic Fraud Inclination Metric - Model Evaluation Results</p>
@@ -501,6 +574,389 @@ def generate_index_html(output_path: Path) -> None:
     print(f"Generated: {output_path}")
 
 
+def generate_docs_html(output_path: Path) -> None:
+    """Generate docs.html for viewing markdown documentation."""
+
+    html = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AFIM Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #475569;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Navigation Bar */
+        .site-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-brand {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        @media (max-width: 640px) {
+            .site-nav {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 1rem;
+            }
+
+            .nav-tabs {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .nav-tab {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.8125rem;
+            }
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .error {
+            text-align: center;
+            padding: 3rem;
+            color: #ef4444;
+        }
+
+        /* Markdown content styling */
+        .doc-content {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .doc-content h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        .doc-content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem 0;
+            color: var(--text-primary);
+        }
+
+        .doc-content h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 1.5rem 0 0.75rem 0;
+            color: var(--text-primary);
+        }
+
+        .doc-content h4, .doc-content h5, .doc-content h6 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.25rem 0 0.5rem 0;
+            color: var(--text-secondary);
+        }
+
+        .doc-content p {
+            margin: 0.75rem 0;
+            color: var(--text-primary);
+        }
+
+        .doc-content ul, .doc-content ol {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .doc-content li {
+            margin: 0.375rem 0;
+        }
+
+        .doc-content code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+        }
+
+        .doc-content pre {
+            background: var(--bg-primary);
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .doc-content pre code {
+            background: none;
+            padding: 0;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+        }
+
+        .doc-content blockquote {
+            border-left: 4px solid var(--accent-blue);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .doc-content a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .doc-content a:hover {
+            text-decoration: underline;
+        }
+
+        .doc-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        .doc-content th, .doc-content td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: left;
+        }
+
+        .doc-content th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+        }
+
+        .doc-content tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .doc-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .doc-content hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <nav class="site-nav">
+        <div class="nav-brand">AFIM Benchmark</div>
+        <div class="nav-tabs">
+            <a href="index.html" class="nav-tab">Results</a>
+            <a href="docs.html?page=summary" class="nav-tab" data-page="summary">Summary</a>
+            <a href="docs.html?page=scoring" class="nav-tab" data-page="scoring">Scoring</a>
+            <a href="docs.html?page=prompts" class="nav-tab" data-page="prompts">Prompts</a>
+            <a href="docs.html?page=readme" class="nav-tab" data-page="readme">About</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="docContent" class="doc-content">
+            <div class="loading">Loading documentation...</div>
+        </div>
+    </div>
+
+    <script>
+        // Page to file mapping
+        const pageFiles = {
+            'summary': 'SUMMARY.md',
+            'scoring': 'SCORING.md',
+            'prompts': 'PROMPTS.md',
+            'readme': 'README.md'
+        };
+
+        const pageTitles = {
+            'summary': 'Summary',
+            'scoring': 'Scoring Methodology',
+            'prompts': 'Prompts',
+            'readme': 'About AFIM'
+        };
+
+        // Configure marked
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            headerIds: false,
+            mangle: false
+        });
+
+        // Get page from URL
+        function getPageParam() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('page') || 'summary';
+        }
+
+        // Update active nav tab
+        function updateActiveTab(page) {
+            document.querySelectorAll('.nav-tab[data-page]').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.page === page);
+            });
+        }
+
+        // Load markdown file
+        async function loadMarkdown(page) {
+            const file = pageFiles[page];
+            if (!file) {
+                document.getElementById('docContent').innerHTML =
+                    '<div class="error">Page not found</div>';
+                return;
+            }
+
+            updateActiveTab(page);
+            document.title = `${pageTitles[page]} - AFIM Documentation`;
+
+            try {
+                const response = await fetch(file);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const markdown = await response.text();
+                document.getElementById('docContent').innerHTML = marked.parse(markdown);
+            } catch (e) {
+                document.getElementById('docContent').innerHTML =
+                    `<div class="error">Failed to load ${file}: ${e.message}</div>`;
+            }
+        }
+
+        // Handle navigation without page reload
+        document.querySelectorAll('.nav-tab[data-page]').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                const page = tab.dataset.page;
+                history.pushState({page}, '', `docs.html?page=${page}`);
+                loadMarkdown(page);
+            });
+        });
+
+        // Handle browser back/forward
+        window.addEventListener('popstate', (e) => {
+            loadMarkdown(e.state?.page || getPageParam());
+        });
+
+        // Initial load
+        loadMarkdown(getPageParam());
+    </script>
+</body>
+</html>
+'''
+
+    with open(output_path, "w") as f:
+        f.write(html)
+
+    print(f"Generated: {output_path}")
+
+
+def copy_markdown_files(source_dir: Path, output_dir: Path) -> None:
+    """Copy markdown documentation files to output directory."""
+    import shutil
+
+    md_files = ['SUMMARY.md', 'SCORING.md', 'PROMPTS.md', 'README.md']
+
+    for filename in md_files:
+        src = source_dir / filename
+        dst = output_dir / filename
+        if src.exists():
+            shutil.copy(src, dst)
+            print(f"Copied: {dst}")
+        else:
+            print(f"Warning: {src} not found")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate static results site")
     parser.add_argument(
@@ -532,6 +988,10 @@ def main():
     index_path = results_dir / "index.html"
     generate_index_html(index_path)
 
+    # Generate docs page
+    docs_path = results_dir / "docs.html"
+    generate_docs_html(docs_path)
+
     # Copy viewer to results dir
     viewer_src = Path(__file__).parent / "view_results.html"
     viewer_dst = results_dir / "view_results.html"
@@ -542,6 +1002,10 @@ def main():
         print(f"Copied: {viewer_dst}")
     else:
         print(f"Warning: {viewer_src} not found")
+
+    # Copy markdown documentation files
+    project_root = Path(__file__).parent.parent
+    copy_markdown_files(project_root, results_dir)
 
     print(f"\nStatic site generated in: {results_dir}")
     print(f"Serve with: python -m http.server -d {results_dir}")
