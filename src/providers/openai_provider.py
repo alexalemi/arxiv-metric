@@ -16,6 +16,9 @@ class OpenAIProvider(LLMProvider):
     # Models that require max_completion_tokens instead of max_tokens
     NEW_PARAM_MODELS = ["gpt-5", "o1", "o3"]
 
+    # Models that only support temperature=1 (no customization)
+    FIXED_TEMP_MODELS = ["gpt-5", "o1", "o3"]
+
     def __init__(self, model: str = "gpt-4o", api_key: Optional[str] = None):
         super().__init__(model, api_key)
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
@@ -26,6 +29,10 @@ class OpenAIProvider(LLMProvider):
     def _uses_new_token_param(self) -> bool:
         """Check if model uses max_completion_tokens instead of max_tokens."""
         return any(self.model.startswith(prefix) for prefix in self.NEW_PARAM_MODELS)
+
+    def _has_fixed_temperature(self) -> bool:
+        """Check if model only supports temperature=1 (no customization)."""
+        return any(self.model.startswith(prefix) for prefix in self.FIXED_TEMP_MODELS)
 
     @property
     def provider_name(self) -> str:
@@ -48,8 +55,12 @@ class OpenAIProvider(LLMProvider):
         kwargs = {
             "model": self.model,
             "messages": messages,
-            "temperature": temperature,
         }
+
+        # Some models (gpt-5, o1, o3) only support temperature=1
+        if not self._has_fixed_temperature():
+            kwargs["temperature"] = temperature
+
         if self._uses_new_token_param():
             kwargs["max_completion_tokens"] = max_tokens
         else:
@@ -89,8 +100,12 @@ class OpenAIProvider(LLMProvider):
         kwargs = {
             "model": self.model,
             "messages": api_messages,
-            "temperature": temperature,
         }
+
+        # Some models (gpt-5, o1, o3) only support temperature=1
+        if not self._has_fixed_temperature():
+            kwargs["temperature"] = temperature
+
         if self._uses_new_token_param():
             kwargs["max_completion_tokens"] = max_tokens
         else:
