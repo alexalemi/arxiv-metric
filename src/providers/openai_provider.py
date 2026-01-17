@@ -13,12 +13,19 @@ class OpenAIProvider(LLMProvider):
 
     SUPPORTED_MODELS = ["gpt-5.1", "gpt-5.2", "gpt-4o", "gpt-4o-mini"]
 
+    # Models that require max_completion_tokens instead of max_tokens
+    NEW_PARAM_MODELS = ["gpt-5", "o1", "o3"]
+
     def __init__(self, model: str = "gpt-4o", api_key: Optional[str] = None):
         super().__init__(model, api_key)
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self._api_key:
             raise ValueError("OpenAI API key required via api_key param or OPENAI_API_KEY env var")
         self._client = AsyncOpenAI(api_key=self._api_key)
+
+    def _uses_new_token_param(self) -> bool:
+        """Check if model uses max_completion_tokens instead of max_tokens."""
+        return any(self.model.startswith(prefix) for prefix in self.NEW_PARAM_MODELS)
 
     @property
     def provider_name(self) -> str:
@@ -37,12 +44,18 @@ class OpenAIProvider(LLMProvider):
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        response = await self._client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        # Build kwargs - newer models use max_completion_tokens
+        kwargs = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": temperature,
+        }
+        if self._uses_new_token_param():
+            kwargs["max_completion_tokens"] = max_tokens
+        else:
+            kwargs["max_tokens"] = max_tokens
+
+        response = await self._client.chat.completions.create(**kwargs)
 
         choice = response.choices[0]
         usage = response.usage
@@ -72,12 +85,18 @@ class OpenAIProvider(LLMProvider):
         for msg in messages:
             api_messages.append({"role": msg.role, "content": msg.content})
 
-        response = await self._client.chat.completions.create(
-            model=self.model,
-            messages=api_messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        # Build kwargs - newer models use max_completion_tokens
+        kwargs = {
+            "model": self.model,
+            "messages": api_messages,
+            "temperature": temperature,
+        }
+        if self._uses_new_token_param():
+            kwargs["max_completion_tokens"] = max_tokens
+        else:
+            kwargs["max_tokens"] = max_tokens
+
+        response = await self._client.chat.completions.create(**kwargs)
 
         choice = response.choices[0]
         usage = response.usage
