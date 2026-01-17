@@ -38,9 +38,9 @@ MODELS=(
     "anthropic:claude-haiku-4-5"
 
     # Google models
-    "google:gemini-2.5-pro"
+    "google:gemini-3-pro-preview"
+    "google:gemini-3-flash-preview"
     "google:gemini-2.5-flash"
-    "google:gemini-2.0-flash"
 
     # xAI Grok models
     "xai:grok-4"

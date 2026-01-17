@@ -12,7 +12,7 @@ from .base import LLMProvider, LLMResponse, Message
 class GoogleProvider(LLMProvider):
     """Google Gemini API provider."""
 
-    SUPPORTED_MODELS = ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+    SUPPORTED_MODELS = ["gemini-3-pro-preview", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"]
 
     def __init__(self, model: str = "gemini-2.5-flash", api_key: Optional[str] = None):
         super().__init__(model, api_key)
