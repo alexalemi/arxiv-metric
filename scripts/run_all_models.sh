@@ -68,10 +68,10 @@ for entry in "${MODELS[@]}"; do
         --output-dir "$OUTPUT_DIR" \
         $EXTRA_ARGS; then
         echo "[PASS] ${model}"
-        ((PASSED++))
+        ((++PASSED))
     else
         echo "[FAIL] ${model}"
-        ((FAILED++))
+        ((++FAILED))
         FAILED_MODELS+=("${provider}:${model}")
     fi
 done
