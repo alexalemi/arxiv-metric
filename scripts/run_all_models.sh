@@ -28,19 +28,24 @@ echo ""
 # Format: "provider:model"
 MODELS=(
     # OpenAI models
+    "openai:gpt-5.1"
     "openai:gpt-4o"
     "openai:gpt-4o-mini"
-    "openai:gpt-4-turbo"
 
     # Anthropic models
-    "anthropic:claude-sonnet-4-5"
     "anthropic:claude-opus-4-5"
+    "anthropic:claude-sonnet-4-5"
     "anthropic:claude-haiku-4-5"
 
     # Google models
-    "google:gemini-2.0-flash"
-    "google:gemini-1.5-pro"
-    "google:gemini-1.5-flash"
+    "google:gemini-3-pro"
+    "google:gemini-3-flash"
+    "google:gemini-2.5-flash"
+
+    # xAI Grok models
+    "xai:grok-4"
+    "xai:grok-4-fast-reasoning"
+    "xai:grok-3"
 )
 
 # Track results

@@ -204,6 +204,7 @@ def generate_index_html(output_path: Path) -> None:
         .badge-openai { background: rgba(16, 163, 127, 0.2); color: #10a37f; }
         .badge-anthropic { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
         .badge-google { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+        .badge-xai { background: rgba(239, 68, 68, 0.2); color: #f87171; }
 
         .result-date {
             font-size: 0.75rem;
@@ -299,6 +300,7 @@ def generate_index_html(output_path: Path) -> None:
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic</option>
                         <option value="google">Google</option>
+                        <option value="xai">xAI (Grok)</option>
                     </select>
                 </div>
                 <div class="selector-group">
@@ -370,6 +372,7 @@ def generate_index_html(output_path: Path) -> None:
             if (p.includes('openai')) return 'badge-openai';
             if (p.includes('anthropic')) return 'badge-anthropic';
             if (p.includes('google')) return 'badge-google';
+            if (p.includes('xai') || p.includes('grok')) return 'badge-xai';
             return '';
         }
 

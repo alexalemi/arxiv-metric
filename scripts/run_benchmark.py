@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.execution.runner import BenchmarkConfig, BenchmarkRunner
 from src.multiturn import MultiTurnRunner, MultiTurnConfig, MultiTurnBenchmarkResult
-from src.providers import AnthropicProvider, GoogleProvider, OpenAIProvider
+from src.providers import AnthropicProvider, GoogleProvider, OpenAIProvider, XAIProvider
 
 console = Console()
 
@@ -31,6 +31,7 @@ def get_provider(provider_name: str, model: str):
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
         "google": GoogleProvider,
+        "xai": XAIProvider,
     }
 
     if provider_name not in providers:
@@ -202,7 +203,7 @@ def main():
     # Target model
     parser.add_argument(
         "--provider", "-p",
-        choices=["openai", "anthropic", "google"],
+        choices=["openai", "anthropic", "google", "xai"],
         default="openai",
         help="Target LLM provider to evaluate"
     )
@@ -215,7 +216,7 @@ def main():
     # Judge model (optional, auto-selects cross-family if not specified)
     parser.add_argument(
         "--judge-provider",
-        choices=["openai", "anthropic", "google"],
+        choices=["openai", "anthropic", "google", "xai"],
         help="Judge LLM provider (defaults to different family)"
     )
     parser.add_argument(

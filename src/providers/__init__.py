@@ -4,6 +4,7 @@ from .base import LLMProvider, LLMResponse
 from .openai_provider import OpenAIProvider
 from .anthropic_provider import AnthropicProvider
 from .google_provider import GoogleProvider
+from .xai_provider import XAIProvider
 
 __all__ = [
     "LLMProvider",
@@ -11,4 +12,5 @@ __all__ = [
     "OpenAIProvider",
     "AnthropicProvider",
     "GoogleProvider",
+    "XAIProvider",
 ]

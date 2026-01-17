@@ -224,6 +224,11 @@
             color: #eab308;
         }
 
+        .badge-xai {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
         /* Charts Row */
         .charts-row {
             display: grid;
@@ -884,6 +889,7 @@
             if (p.includes('openai')) return 'badge-openai';
             if (p.includes('anthropic')) return 'badge-anthropic';
             if (p.includes('google')) return 'badge-google';
+            if (p.includes('xai') || p.includes('grok')) return 'badge-xai';
             return '';
         }
 
