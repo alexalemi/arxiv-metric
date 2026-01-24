@@ -15,10 +15,12 @@ dependencies = [
     "tqdm>=4.65.0",
     "pyyaml>=6.0",
     "rich>=13.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.scripts]
 afim = "scripts.run_benchmark:main"
+delusion = "scripts.run_delusion_eval:main"
 
 [build-system]
 requires = ["hatchling"]
